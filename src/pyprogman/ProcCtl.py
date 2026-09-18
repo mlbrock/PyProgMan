@@ -1,0 +1,362 @@
+#!/usr/bin/python
+# #############################################################################
+# #############################################################################
+# MLB Python Program Management (PyProgMan) Module Script
+# #############################################################################
+#
+#   File Name       :   ProcCtl.py
+#
+#   File Description:   Test file for the MLB::Utility Python interface.
+#
+#   Revision History:   2009-02-19 --- Creation in a Perl script suite.
+#                               Michael L. Brock
+#                       2025-09-22 --- Logic migrated to Python.
+#
+#       Copyright Michael L. Brock 2007 - 2026.
+#       Distributed under the Boost Software License, Version 1.0.
+#       (See accompanying file LICENSE_1_0.txt or copy at
+#       http://www.boost.org/LICENSE_1_0.txt)
+#
+# #############################################################################
+
+# #############################################################################
+import psutil
+import re
+import sys
+# #############################################################################
+
+# #############################################################################
+def FixUpVoE(value: int) -> str:
+    if (value == 1):
+        return("is")
+
+    return("are")
+# #############################################################################
+
+# #############################################################################
+def FixUpVoEPlus(value: int) -> str:
+    return(FixUpVoE(value) + " " + str(value))
+# #############################################################################
+
+# #############################################################################
+def FixUpPlural(value: int) -> str:
+    if (value == 1):
+        return("")
+
+    return("s")
+# #############################################################################
+
+# #############################################################################
+def UnderlineString(src: str):
+    str_len: int = len(src)
+    underline: str = "-" * (str_len + 1)
+    return(src + ":\n" + underline)
+# #############################################################################
+
+# #############################################################################
+# *****************************************************************************
+# *****************************************************************************
+# *****************************************************************************
+# #############################################################################
+
+# #############################################################################
+def GetProcsBasic(all_procs: Boolean = True,
+                  src_attrs: list[str] = []) -> dict[int, dict]:
+    results  : dict[int, dict] = {}
+    tmp_attrs: list[str]       = src_attrs
+    mod_attrs: Boolean         = False
+    if ((all_procs == False) and
+        (len(tmp_attrs) > 0) and ("cwd" not in tmp_attrs)):
+        mod_attrs = True
+        tmp_attrs.append("cwd")
+    for this_proc in psutil.process_iter():
+        this_data: dict = this_proc.as_dict(tmp_attrs, None)
+        this_pid:  int  = this_data["pid"]
+        if ((this_pid != None) and
+            (all_procs or (this_data["cwd"] is not None))):
+            results[this_pid] = this_data;
+            if (mod_attrs):
+                del results[this_pid]["cwd"]
+
+    return results
+# #############################################################################
+
+# #############################################################################
+def GetProcs(all_procs: Boolean = False) -> dict[int, dict]:
+    return(GetProcsBasic(all_procs, ["pid", "exe"]))
+# #############################################################################
+
+# #############################################################################
+def GetProcsInterpreter(all_procs: Boolean = False) -> dict[int, dict]:
+    return(GetProcsBasic(all_procs, ["pid", "exe", "cmdline"]))
+# #############################################################################
+
+# #############################################################################
+def FilterProcsByPID(src_pid_spec: int | list[int],
+                     src_proc_list: dict[int, dict] =
+                     GetProcs()) -> dict[int, dict]:
+    if (type(src_pid_spec) is int):
+        tmp_pid_spec: list[int] = [src_pid_spec]
+    else:
+        tmp_pid_spec: list[int] = src_pid_spec
+    dst_proc_list: dict[int, dict] = {}
+    for this_key in src_proc_list.keys():
+        if (this_key in tmp_pid_spec):
+            dst_proc_list[this_key] = src_proc_list[this_key]
+
+    return(dst_proc_list)
+# #############################################################################
+
+# #############################################################################
+def GetProcsByPID(src_pid_spec: int | list[int]) -> dict[int, dict]:
+    return(FilterProcsByPID(src_pid_spec, GetProcs()))
+# #############################################################################
+
+# #############################################################################
+def GetProcsInterpreterByPID(src_pid_spec: int | list[int]) -> dict[int, dict]:
+    return(FilterProcsByPID(src_pid_spec, GetProcsInterpreter()))
+# #############################################################################
+
+# #############################################################################
+def FilterProcsByPattern(src_pattern_spec: str | re.Pattern,
+                         src_proc_list: dict[int, dict] =
+                         GetProcs()) -> dict[int, dict]:
+    if (type(src_pattern_spec) is str):
+        tmp_pattern_spec: re.Pattern = re.compile(re.escape(src_pattern_spec))
+    else:
+        tmp_pattern_spec = src_pattern_spec
+
+    dst_proc_list: dict[int, dict] = {}
+    for this_key in src_proc_list.keys():
+        pattern_match = tmp_pattern_spec.search(str(src_proc_list[this_key]))
+        if (type(pattern_match) is re.Match):
+            dst_proc_list[this_key] = src_proc_list[this_key]
+
+    return(dst_proc_list)
+# #############################################################################
+
+# #############################################################################
+def GetProcsByBaseName(base_name: str,
+                       proc_list: dict[int, dict] =
+                       GetProcs()) -> dict[int, dict]:
+    if (not base_name):
+        raise ValueError("Invocation with an empty process base name.")
+
+    return(FilterProcsByPattern(
+        re.compile("'exe': '.*\\/" + re.escape(base_name) + ".*'"), proc_list))
+# #############################################################################
+
+# #############################################################################
+def RequireProcsByBaseName(base_name: str, min_count: int = 0,
+                           max_count: int | None = None,
+                           proc_list: dict[int, dict] =
+                           GetProcs()) -> dict[int, dict]:
+    max_count = max_count if max_count else min_count
+    if (min_count > max_count):
+        raise ValueError("The minimum count (" + str(min_count) + ") is " +
+                         "greater than the maximum count (" +
+                         str(max_count) + ").")
+
+    result_procs: dict[int, dict] = GetProcsByBaseName(base_name, proc_list)
+    result_count: int             = len(result_procs)
+
+    if ((result_count < min_count) or (result_count > max_count)):
+        raise ValueError("There " + FixUpVoEPlus(result_count) + " instance" +
+                         FixUpPlural(result_count) + " of base name " +
+                         "program '" + base_name + "' running, which is "
+                         "outside the expected range of " + str(min_count) +
+                         " to " + str(max_count) + " instance" +
+                         FixUpPlural(max_count) + ", inclusive.")
+
+    return(result_procs)
+# #############################################################################
+
+# #############################################################################
+def RequireProcsByBaseNameNone(base_name: str,
+                               proc_list: dict[int, dict] =
+                               GetProcs()) -> dict[int, dict]:
+
+    return(RequireProcsByBaseName(base_name, 0, 0, proc_list))
+# #############################################################################
+
+# #############################################################################
+def RequireProcsByBaseNameSingle(base_name: str,
+                               proc_list: dict[int, dict] =
+                               GetProcs()) -> dict[int, dict]:
+
+    return(RequireProcsByBaseName(base_name, 1, 1, proc_list))
+# #############################################################################
+
+# #############################################################################
+def EmitProcsDict(proc_dict: dict[int, dict],
+                  keys_spec: str | dict[str] | list[str] | set[str] | None =
+                  None) -> None:
+    if (not proc_dict):
+        return
+
+    tmp_keys_spec: set[str] = set()
+    if ((keys_spec is not None) and (len(keys_spec) > 0) and
+        (len(proc_dict) > 0)):
+        keys_for_proc: set[str] = set(proc_dict[next(iter(proc_dict))].keys())
+        if (type(keys_spec) is str):
+            tmp_keys_spec = {keys_spec} & keys_for_proc
+        elif (type(keys_spec) is dict):
+            tmp_keys_spec = set(keys_spec.keys()) & keys_for_proc
+        elif (type(keys_spec) is list):
+            tmp_keys_spec = set(keys_spec) & keys_for_proc
+        elif (type(keys_spec) is set):
+            tmp_keys_spec = keys_spec & keys_for_proc
+
+    if (not tmp_keys_spec):
+        for this_key in sorted(proc_dict.keys()):
+            print(f"{this_key:>7}:", proc_dict[this_key])
+    else:
+        for this_key in sorted(proc_dict.keys()):
+            proc_datum: dict[str] = dict()
+            for datum_key in tmp_keys_spec:
+                proc_datum[datum_key] = proc_dict[this_key][datum_key]
+            print(f"{this_key:>7}:", proc_datum)
+
+# #############################################################################
+
+# #############################################################################
+# *****************************************************************************
+# *****************************************************************************
+# *****************************************************************************
+# #############################################################################
+
+# #############################################################################
+def _TEST_ProcDictTypes(proc_list: dict[int, dict]) -> None:
+    print("==================================================================")
+    print(UnderlineString("_TEST_ProcDictTypes(): " +
+                          str(len(proc_list)) + " processes"))
+    print("type of proc_list            :", type(proc_list))
+    print("type of proc_list.keys()     :", type(proc_list.keys()))
+    print("type of set(proc_list.keys()):", type(set(proc_list.keys())))
+    print("==================================================================")
+    print("")
+# #############################################################################
+
+# #############################################################################
+def _TEST_DumpAllProcs(proc_list: dict[int, dict]) -> None:
+    print("==================================================================")
+    print(UnderlineString("_TEST_DumpAllProcs(): " +
+                          str(len(proc_list)) + " processes"))
+    EmitProcsDict(proc_list)
+    print("==================================================================")
+    print("")
+# #############################################################################
+
+# #############################################################################
+def _TEST_RegexPatternTypes():
+    print("==================================================================")
+    print(UnderlineString("_TEST_RegexPatternTypes()"))
+    X_pattern_spec: re.Pattern = re.compile("python")
+    X_pattern_match = re.search(X_pattern_spec, "XXX-python-YYY")
+    X_pattern_match = re.search(X_pattern_spec, "/usr/bin/python3.14")
+    print(">>> Type of pattern_spec    : ", type(X_pattern_spec))
+    print(">>> Value of pattern_spec   : ", X_pattern_spec)
+    print(">>> Type of pattern_match   : ", type(X_pattern_match))
+    print(">>> Value of pattern_match  : ", X_pattern_match)
+    print("==================================================================")
+    print("")
+# #############################################################################
+
+# #############################################################################
+def _TEST_FilterProcsByPattern():
+    print("==================================================================")
+    print(UnderlineString("FilterProcsByPattern(): 'python'"))
+    EmitProcsDict(
+        FilterProcsByPattern("python"))
+    print("------------------------------------------------------------------")
+    print(UnderlineString(
+        "FilterProcsByPattern(): 'exe': '.*\\/python(\\d+\\.\\d+)?.*'"))
+    EmitProcsDict(
+        FilterProcsByPattern(
+            re.compile("'exe': '.*\\/python(\\d+\\.\\d+)?.*'")))
+    print("==================================================================")
+    print("")
+# #############################################################################
+
+# #############################################################################
+def _TEST_GetProcsByBaseName():
+    print("==================================================================")
+    print(UnderlineString("GetProcsByBaseName(): python"))
+    EmitProcsDict(
+        GetProcsByBaseName("python"))
+    print("==================================================================")
+    print("")
+# #############################################################################
+
+# #############################################################################
+def _TEST_EmitProcsDict():
+    print("==================================================================")
+    attrs: list[str] = ["pid", "exe", "cmdline", "cwd", "username", "ppid"]
+    test_proc_list = GetProcsByBaseName("python", GetProcsBasic(True, attrs))
+    print("TEST USING GetProcsByBaseName('python',\n" +
+          "    GetProcsBasic(True,\n" +
+          "        " + str(attrs) + ")) =\n" +
+          "        " + str(len(test_proc_list)) + " processes")
+    print("------------------------------------------------------------------")
+#    test_proc_list = GetProcsByBaseName("python", GetProcsBasic(True, attrs))
+    print(UnderlineString("EmitProcsDict(): Default keys (all keys)"))
+    EmitProcsDict(test_proc_list)
+    print("------------------------------------------------------------------")
+    print(UnderlineString("EmitProcsDict(): Key 'cwd'"))
+    EmitProcsDict(test_proc_list, "cwd")
+    print("------------------------------------------------------------------")
+    print(UnderlineString("EmitProcsDict(): Key 'username'"))
+    EmitProcsDict(test_proc_list, "username")
+    print("------------------------------------------------------------------")
+    print(UnderlineString("EmitProcsDict(): Key ['cwd', 'username']"))
+    EmitProcsDict(test_proc_list, ['cwd', 'username'])
+    print("------------------------------------------------------------------")
+    print(UnderlineString("EmitProcsDict(): Key {'cwd', 'username'}"))
+    EmitProcsDict(test_proc_list, {'cwd', 'username'})
+    print("------------------------------------------------------------------")
+    print(UnderlineString("EmitProcsDict(): Key ['cwd', 'bad', 'worse', 'username']"))
+    EmitProcsDict(test_proc_list, ['cwd', 'bad', 'worse', 'username'])
+    print("------------------------------------------------------------------")
+    print(UnderlineString("EmitProcsDict(): Key ['cwd', 'bad', 'worse', 'username', 'status']"))
+    EmitProcsDict(test_proc_list, ['cwd', 'bad', 'worse', 'username', 'status'])
+    print("------------------------------------------------------------------")
+    print(UnderlineString("EmitProcsDict(): Key None"))
+    EmitProcsDict(test_proc_list, None)
+    print("------------------------------------------------------------------")
+    print(UnderlineString("EmitProcsDict(): Key ''"))
+    EmitProcsDict(test_proc_list, '')
+    print("------------------------------------------------------------------")
+    print(UnderlineString("EmitProcsDict(): Key []"))
+    EmitProcsDict(test_proc_list, [])
+    print("------------------------------------------------------------------")
+    print(UnderlineString("EmitProcsDict(): Key {}"))
+    EmitProcsDict(test_proc_list, {})
+    print("==================================================================")
+    print("")
+# #############################################################################
+
+# #############################################################################
+def _TEST_RequireProcsByBaseName():
+    print("==================================================================")
+    print(UnderlineString("RequireProcsByBaseName(): 'python', 1, 2"))
+    EmitProcsDict(RequireProcsByBaseName("python", 1, 2))
+    print("==================================================================")
+    print("")
+# #############################################################################
+
+# #############################################################################
+if __name__ == "__main__":
+    try:
+        proc_list: dict[int, dict] = GetProcs()
+        _TEST_ProcDictTypes(proc_list)
+        _TEST_DumpAllProcs(proc_list)
+        _TEST_RegexPatternTypes()
+        _TEST_FilterProcsByPattern()
+        _TEST_GetProcsByBaseName()
+        _TEST_EmitProcsDict()
+        _TEST_RequireProcsByBaseName()
+    except Exception as this_except:
+        print("ERROR: Error in 'ProcCtl.py' internal test: ", this_except,
+              file=sys.stderr)
+# #############################################################################
+
