@@ -23,6 +23,7 @@
 import psutil
 import re
 import sys
+import traceback
 # #############################################################################
 
 # #############################################################################
@@ -47,6 +48,26 @@ def FixUpPlural(value: int) -> str:
 # #############################################################################
 
 # #############################################################################
+def GetSep(sep_char: str = "", width: int = 79) -> str:
+    result: str = ""
+
+    if (width > 0):
+        if (len(sep_char) > 0):
+            tmp_char: str = sep_char[0]
+        else:
+            tmp_char: str = "="
+
+        result = tmp_char * width
+
+    return(result)
+# #############################################################################
+
+# #############################################################################
+def EmitSep(sep_char: str = "", width: int = 79):
+    print(GetSep(sep_char, width))
+# #############################################################################
+
+# #############################################################################
 def UnderlineString(src: str):
     str_len: int = len(src)
     underline: str = "-" * (str_len + 1)
@@ -54,17 +75,24 @@ def UnderlineString(src: str):
 # #############################################################################
 
 # #############################################################################
+def ThrowTypeNotInDomain(func_name: str, param_name: str, param_type: str):
+    raise TypeError("Invocation of function '" + func_name + "()' "
+                     "with a '" + param_name + "' parameter of an "
+                     "unsupported type (" + param_type + ").")
+# #############################################################################
+
+# #############################################################################
 # *****************************************************************************
 # *****************************************************************************
 # *****************************************************************************
 # #############################################################################
 
 # #############################################################################
-def GetProcsBasic(all_procs: Boolean = True,
+def GetProcsBasic(all_procs: bool = True,
                   src_attrs: list[str] = []) -> dict[int, dict]:
     results  : dict[int, dict] = {}
     tmp_attrs: list[str]       = src_attrs
-    mod_attrs: Boolean         = False
+    mod_attrs: bool            = False
     if ((all_procs == False) and
         (len(tmp_attrs) > 0) and ("cwd" not in tmp_attrs)):
         mod_attrs = True
@@ -82,12 +110,12 @@ def GetProcsBasic(all_procs: Boolean = True,
 # #############################################################################
 
 # #############################################################################
-def GetProcs(all_procs: Boolean = False) -> dict[int, dict]:
+def GetProcs(all_procs: bool = False) -> dict[int, dict]:
     return(GetProcsBasic(all_procs, ["pid", "exe"]))
 # #############################################################################
 
 # #############################################################################
-def GetProcsInterpreter(all_procs: Boolean = False) -> dict[int, dict]:
+def GetProcsInterpreter(all_procs: bool = False) -> dict[int, dict]:
     return(GetProcsBasic(all_procs, ["pid", "exe", "cmdline"]))
 # #############################################################################
 
@@ -99,6 +127,7 @@ def FilterProcsByPID(src_pid_spec: int | list[int],
         tmp_pid_spec: list[int] = [src_pid_spec]
     else:
         tmp_pid_spec: list[int] = src_pid_spec
+
     dst_proc_list: dict[int, dict] = {}
     for this_key in src_proc_list.keys():
         if (this_key in tmp_pid_spec):
@@ -123,8 +152,11 @@ def FilterProcsByPattern(src_pattern_spec: str | re.Pattern,
                          GetProcs()) -> dict[int, dict]:
     if (type(src_pattern_spec) is str):
         tmp_pattern_spec: re.Pattern = re.compile(re.escape(src_pattern_spec))
-    else:
+    elif (type(src_pattern_spec) is re.Pattern):
         tmp_pattern_spec = src_pattern_spec
+    else:
+        ThrowTypeNotInDomain("FilterProcsByPattern", "src_pattern_spec",
+                             str(type(src_pattern_spec)))
 
     dst_proc_list: dict[int, dict] = {}
     for this_key in src_proc_list.keys():
@@ -274,6 +306,12 @@ def _TEST_FilterProcsByPattern():
     EmitProcsDict(
         FilterProcsByPattern(
             re.compile("'exe': '.*\\/python(\\d+\\.\\d+)?.*'")))
+    print("------------------------------------------------------------------")
+    try:
+        EmitProcsDict(FilterProcsByPattern(1.23))
+    except Exception as this_except:
+        print("ANTICIPATED ERROR: Error in '_TEST_FilterProcsByPattern()' "
+              "internal test: ", this_except)
     print("==================================================================")
     print("")
 # #############################################################################
@@ -298,7 +336,6 @@ def _TEST_EmitProcsDict():
           "        " + str(attrs) + ")) =\n" +
           "        " + str(len(test_proc_list)) + " processes")
     print("------------------------------------------------------------------")
-#    test_proc_list = GetProcsByBaseName("python", GetProcsBasic(True, attrs))
     print(UnderlineString("EmitProcsDict(): Default keys (all keys)"))
     EmitProcsDict(test_proc_list)
     print("------------------------------------------------------------------")
@@ -358,5 +395,6 @@ if __name__ == "__main__":
     except Exception as this_except:
         print("ERROR: Error in 'ProcCtl.py' internal test: ", this_except,
               file=sys.stderr)
+        print(traceback.format_exc())
 # #############################################################################
 
