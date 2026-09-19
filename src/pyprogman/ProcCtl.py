@@ -125,8 +125,11 @@ def FilterProcsByPID(src_pid_spec: int | list[int],
                      GetProcs()) -> dict[int, dict]:
     if (type(src_pid_spec) is int):
         tmp_pid_spec: list[int] = [src_pid_spec]
-    else:
+    elif (type(src_pid_spec) is list):
         tmp_pid_spec: list[int] = src_pid_spec
+    else:
+        ThrowTypeNotInDomain("FilterProcsByPID", "src_pid_spec",
+                             str(type(src_pid_spec)))
 
     dst_proc_list: dict[int, dict] = {}
     for this_key in src_proc_list.keys():
@@ -317,6 +320,22 @@ def _TEST_FilterProcsByPattern():
 # #############################################################################
 
 # #############################################################################
+def _TEST_FilterProcsByPID():
+    my_proc = psutil.Process()
+    my_pid  = my_proc.pid
+    print("==================================================================")
+    print(UnderlineString("FilterProcsByPID(): " + str(my_pid)))
+    EmitProcsDict(
+        FilterProcsByPID(my_pid))
+    print("------------------------------------------------------------------")
+    print(UnderlineString("FilterProcsByPID(): [" + str(my_pid) + "]"))
+    EmitProcsDict(
+        FilterProcsByPID([my_pid]))
+    print("==================================================================")
+    print("")
+# #############################################################################
+
+# #############################################################################
 def _TEST_GetProcsByBaseName():
     print("==================================================================")
     print(UnderlineString("GetProcsByBaseName(): python"))
@@ -389,6 +408,7 @@ if __name__ == "__main__":
         _TEST_DumpAllProcs(proc_list)
         _TEST_RegexPatternTypes()
         _TEST_FilterProcsByPattern()
+        _TEST_FilterProcsByPID()
         _TEST_GetProcsByBaseName()
         _TEST_EmitProcsDict()
         _TEST_RequireProcsByBaseName()
