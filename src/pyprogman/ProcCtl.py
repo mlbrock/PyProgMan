@@ -22,8 +22,6 @@
 # #############################################################################
 import psutil
 import re
-import sys
-import traceback
 
 from typing import Any
 # #############################################################################
@@ -123,18 +121,23 @@ def GetProcsInterpreter(all_procs: bool = False) -> dict[int, dict]:
 # #############################################################################
 
 # #############################################################################
-def FilterProcsByPID(src_pid_spec: int | list[int],
+def FilterProcsByPID(src_pid_spec: int | list[int] | set[int],
                      src_proc_list: dict[int, dict] =
                      GetProcs()) -> dict[int, dict]:
+    tmp_pid_spec: set[int] = set()
+
     if (type(src_pid_spec) is int):
-        tmp_pid_spec: list[int] = [src_pid_spec]
+        tmp_pid_spec = {src_pid_spec}
     elif (type(src_pid_spec) is list):
-        tmp_pid_spec: list[int] = src_pid_spec
+        tmp_pid_spec = set(src_pid_spec)
+    elif (type(src_pid_spec) is set):
+        tmp_pid_spec = src_pid_spec
     else:
         ThrowTypeNotInDomain("FilterProcsByPID", "src_pid_spec",
                              str(type(src_pid_spec)))
 
     dst_proc_list: dict[int, dict] = {}
+
     for this_key in src_proc_list:
         if (this_key in tmp_pid_spec):
             dst_proc_list[this_key] = src_proc_list[this_key]
@@ -143,12 +146,13 @@ def FilterProcsByPID(src_pid_spec: int | list[int],
 # #############################################################################
 
 # #############################################################################
-def GetProcsByPID(src_pid_spec: int | list[int]) -> dict[int, dict]:
+def GetProcsByPID(src_pid_spec: int | list[int] | set[int]) -> dict[int, dict]:
     return(FilterProcsByPID(src_pid_spec, GetProcs()))
 # #############################################################################
 
 # #############################################################################
-def GetProcsInterpreterByPID(src_pid_spec: int | list[int]) -> dict[int, dict]:
+def GetProcsInterpreterByPID(src_pid_spec: int | list[int] |
+                             set[int]) -> dict[int, dict]:
     return(FilterProcsByPID(src_pid_spec, GetProcsInterpreter()))
 # #############################################################################
 
@@ -265,6 +269,12 @@ def EmitProcsDict(proc_dict: dict[int, dict],
 # #############################################################################
 
 # #############################################################################
+import random
+import sys
+import traceback
+# #############################################################################
+
+# #############################################################################
 def _TEST_ProcDictTypes(proc_list: dict[int, dict]) -> None:
     print("==================================================================")
     print(UnderlineString("_TEST_ProcDictTypes(): " +
@@ -335,6 +345,47 @@ def _TEST_FilterProcsByPID() -> None:
     print(UnderlineString("FilterProcsByPID(): [" + str(my_pid) + "]"))
     EmitProcsDict(
         FilterProcsByPID([my_pid]))
+    print("------------------------------------------------------------------")
+    print(UnderlineString("FilterProcsByPID(): [" + str(my_pid) + ", " +
+                          str(my_pid) + ", " + str(my_pid) + "]"))
+    EmitProcsDict(
+        FilterProcsByPID([my_pid, my_pid, my_pid]))
+    print("------------------------------------------------------------------")
+    print(UnderlineString("FilterProcsByPID(): {" + str(my_pid) + ", " +
+                          str(my_pid) + ", " + str(my_pid) + "}"))
+    EmitProcsDict(
+        FilterProcsByPID({my_pid, my_pid, my_pid}))
+    print("------------------------------------------------------------------")
+    all_pid_dict : dict[int, dict] = GetProcs(False)
+    all_pid_list : list[int]       = list(all_pid_dict.keys())
+    test_pid_set : set[int]        = {my_pid}
+    first_bad_pid: int             = max(all_pid_dict) + 1
+    if (first_bad_pid <= 100000):
+        first_bad_pid = 100000
+    elif (first_bad_pid <= 1000000):
+        first_bad_pid =    1000000
+    elif (first_bad_pid <= 1000000):
+        first_bad_pid =   10000000
+    elif (first_bad_pid <= 1000000):
+        first_bad_pid =  100000000
+    elif (first_bad_pid <= 1000000):
+        first_bad_pid = 1000000000
+    # ----- Must have at least four valid PIDs:
+    all_pid_count: int = len(all_pid_dict)
+    if (all_pid_count < 4):
+        raise ValueError("There are two few matching processes running (" +
+                         str(all_pid_count) + ") --- a minimum of four " +
+                         "active processes are required for this test.")
+    # ----- Add three additional valid PIDs:
+    while len(test_pid_set) < 4:
+        try_pid_index: int = random.randint(0, all_pid_count - 1)
+        test_pid_set.add(all_pid_list[try_pid_index])
+    # ----- Add three additional invalid PIDs:
+    while len(test_pid_set) < 7:
+        test_pid_set.add(random.randint(first_bad_pid, first_bad_pid + 100))
+    print(UnderlineString("FilterProcsByPID(): " + str(test_pid_set)))
+    EmitProcsDict(
+        FilterProcsByPID(test_pid_set, all_pid_dict))
     print("==================================================================")
     print("")
 # #############################################################################
