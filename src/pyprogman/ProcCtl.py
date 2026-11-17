@@ -68,14 +68,15 @@ def EmitSep(sep_char: str = "", width: int = 79):
 # #############################################################################
 
 # #############################################################################
-def UnderlineString(src: str):
+def UnderlineString(src: str) -> str:
     str_len: int = len(src)
     underline: str = "-" * (str_len + 1)
     return(src + ":\n" + underline)
 # #############################################################################
 
 # #############################################################################
-def ThrowTypeNotInDomain(func_name: str, param_name: str, param_type: str):
+def ThrowTypeNotInDomain(func_name: str, param_name: str,
+                         param_type: str) -> None:
     raise TypeError("Invocation of function '" + func_name + "()' "
                      "with a '" + param_name + "' parameter of an "
                      "unsupported type (" + param_type + ").")
@@ -283,7 +284,7 @@ def _TEST_DumpAllProcs(proc_list: dict[int, dict]) -> None:
 # #############################################################################
 
 # #############################################################################
-def _TEST_RegexPatternTypes():
+def _TEST_RegexPatternTypes() -> None:
     print("==================================================================")
     print(UnderlineString("_TEST_RegexPatternTypes()"))
     X_pattern_spec: re.Pattern = re.compile("python")
@@ -298,7 +299,7 @@ def _TEST_RegexPatternTypes():
 # #############################################################################
 
 # #############################################################################
-def _TEST_FilterProcsByPattern():
+def _TEST_FilterProcsByPattern() -> None:
     print("==================================================================")
     print(UnderlineString("FilterProcsByPattern(): 'python'"))
     EmitProcsDict(
@@ -320,7 +321,7 @@ def _TEST_FilterProcsByPattern():
 # #############################################################################
 
 # #############################################################################
-def _TEST_FilterProcsByPID():
+def _TEST_FilterProcsByPID() -> None:
     my_proc = psutil.Process()
     my_pid  = my_proc.pid
     print("==================================================================")
@@ -336,7 +337,7 @@ def _TEST_FilterProcsByPID():
 # #############################################################################
 
 # #############################################################################
-def _TEST_GetProcsByBaseName():
+def _TEST_GetProcsByBaseName() -> None:
     print("==================================================================")
     print(UnderlineString("GetProcsByBaseName(): python"))
     EmitProcsDict(
@@ -346,7 +347,7 @@ def _TEST_GetProcsByBaseName():
 # #############################################################################
 
 # #############################################################################
-def _TEST_EmitProcsDict():
+def _TEST_EmitProcsDict() -> None:
     print("==================================================================")
     attrs: list[str] = ["pid", "exe", "cmdline", "cwd", "username", "ppid"]
     test_proc_list = GetProcsByBaseName("python", GetProcsBasic(True, attrs))
@@ -376,6 +377,9 @@ def _TEST_EmitProcsDict():
     print(UnderlineString("EmitProcsDict(): Key ['cwd', 'bad', 'worse', 'username', 'status']"))
     EmitProcsDict(test_proc_list, ['cwd', 'bad', 'worse', 'username', 'status'])
     print("------------------------------------------------------------------")
+    print(UnderlineString("EmitProcsDict(): Key ['pid', 'exe', 'cmdline', 'cwd', 'username', 'ppid']"))
+    EmitProcsDict(test_proc_list, ["pid", "exe", "cmdline", "cwd", "username", "ppid"])
+    print("------------------------------------------------------------------")
     print(UnderlineString("EmitProcsDict(): Key None"))
     EmitProcsDict(test_proc_list, None)
     print("------------------------------------------------------------------")
@@ -392,7 +396,7 @@ def _TEST_EmitProcsDict():
 # #############################################################################
 
 # #############################################################################
-def _TEST_RequireProcsByBaseName():
+def _TEST_RequireProcsByBaseName() -> None:
     print("==================================================================")
     print(UnderlineString("RequireProcsByBaseName(): 'python', 1, 2"))
     EmitProcsDict(RequireProcsByBaseName("python", 1, 2))
