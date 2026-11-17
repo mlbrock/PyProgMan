@@ -231,9 +231,9 @@ def EmitProcsDict(proc_dict: dict[int, dict],
         return
 
     tmp_keys_spec: set[str] = set()
+    keys_for_proc: set[str] = set(proc_dict[next(iter(proc_dict))].keys())
     if ((keys_spec is not None) and (len(keys_spec) > 0) and
         (len(proc_dict) > 0)):
-        keys_for_proc: set[str] = set(proc_dict[next(iter(proc_dict))].keys())
         if (type(keys_spec) is str):
             tmp_keys_spec = {keys_spec} & keys_for_proc
         elif (type(keys_spec) is dict):
@@ -243,16 +243,17 @@ def EmitProcsDict(proc_dict: dict[int, dict],
         elif (type(keys_spec) is set):
             tmp_keys_spec = keys_spec & keys_for_proc
 
+    tmp_keys_list: list[str] = []
     if (not tmp_keys_spec):
-        for this_key in sorted(proc_dict.keys()):
-            print(f"{this_key:>7}:", proc_dict[this_key])
+        tmp_keys_list = sorted(keys_for_proc)
     else:
-        for this_key in sorted(proc_dict.keys()):
-            proc_datum: dict[str] = dict()
-            for datum_key in tmp_keys_spec:
-                proc_datum[datum_key] = proc_dict[this_key][datum_key]
-            print(f"{this_key:>7}:", proc_datum)
+        tmp_keys_list = sorted(tmp_keys_spec)
 
+    for this_key in sorted(proc_dict.keys()):
+        proc_datum: dict[str] = {}
+        for datum_key in tmp_keys_list:
+            proc_datum[datum_key] = proc_dict[this_key][datum_key]
+        print(f"{this_key:>7}:", proc_datum)
 # #############################################################################
 
 # #############################################################################
