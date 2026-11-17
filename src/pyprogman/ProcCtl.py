@@ -24,6 +24,8 @@ import psutil
 import re
 import sys
 import traceback
+
+from typing import Any
 # #############################################################################
 
 # #############################################################################
@@ -225,8 +227,8 @@ def RequireProcsByBaseNameSingle(base_name: str,
 
 # #############################################################################
 def EmitProcsDict(proc_dict: dict[int, dict],
-                  keys_spec: str | dict[str] | list[str] | set[str] | None =
-                  None) -> None:
+                  keys_spec: str | dict[str, Any] | list[str] | set[str] |
+                  None = None) -> None:
     if (not proc_dict):
         return
 
@@ -250,7 +252,7 @@ def EmitProcsDict(proc_dict: dict[int, dict],
         tmp_keys_list = sorted(tmp_keys_spec)
 
     for this_key in sorted(proc_dict.keys()):
-        proc_datum: dict[str] = {}
+        proc_datum: dict[str, Any] = {}
         for datum_key in tmp_keys_list:
             proc_datum[datum_key] = proc_dict[this_key][datum_key]
         print(f"{this_key:>7}:", proc_datum)
