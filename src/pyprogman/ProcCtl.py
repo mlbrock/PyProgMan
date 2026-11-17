@@ -380,8 +380,8 @@ def _TEST_FilterProcsByPID() -> None:
         try_pid_index: int = random.randint(0, all_pid_count - 1)
         test_pid_set.add(all_pid_list[try_pid_index])
     # ----- Add three additional invalid PIDs:
-    while len(test_pid_set) < 7:
-        test_pid_set.add(random.randint(first_bad_pid, first_bad_pid + 100))
+    for this_bad_pid in range(3):
+        test_pid_set.add(first_bad_pid + this_bad_pid)
     print(UnderlineString("FilterProcsByPID(): " + str(test_pid_set)))
     EmitProcsDict(
         FilterProcsByPID(test_pid_set, all_pid_dict))
