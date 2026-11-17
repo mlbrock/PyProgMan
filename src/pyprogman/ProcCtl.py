@@ -133,7 +133,7 @@ def FilterProcsByPID(src_pid_spec: int | list[int],
                              str(type(src_pid_spec)))
 
     dst_proc_list: dict[int, dict] = {}
-    for this_key in src_proc_list.keys():
+    for this_key in src_proc_list:
         if (this_key in tmp_pid_spec):
             dst_proc_list[this_key] = src_proc_list[this_key]
 
@@ -163,7 +163,7 @@ def FilterProcsByPattern(src_pattern_spec: str | re.Pattern,
                              str(type(src_pattern_spec)))
 
     dst_proc_list: dict[int, dict] = {}
-    for this_key in src_proc_list.keys():
+    for this_key in src_proc_list:
         pattern_match = tmp_pattern_spec.search(str(src_proc_list[this_key]))
         if (type(pattern_match) is re.Match):
             dst_proc_list[this_key] = src_proc_list[this_key]
